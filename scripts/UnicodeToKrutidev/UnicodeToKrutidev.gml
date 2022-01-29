@@ -5,9 +5,9 @@
 /// on GSUB and GPOS tables found in modern .ttf font files. GameMaker doesn't allow us to access GPOS
 /// and GSUB tables so this is the best we have until someone puts together a .ttf file reader.
 /// 
-/// Krutidev works by inserting Devanagari glyphs into a font in Latin character slots. For example, "k"
-/// is replaced by "ा". Devanagari glyphs can get quite complicated, for example "ह्न" is made up of
-/// three Unicode characters but is represented in Krutidev using "à".
+/// Krutidev works by inserting Devanagari glyphs into a font by overwriting Latin character slots.
+/// For example, "k" is replaced by "ा". Devanagari glyphs can get quite complicated, for example "ह्न"
+/// is made up of three Unicode characters but is represented in Krutidev using "à".
 /// 
 /// This function converts Unicode-formatted Devanagari into the necessary Latin characters so that
 /// when the outputted string is rendered using a Krutidev font the Devanagari glyphs are comfortably
@@ -15,25 +15,24 @@
 /// 
 /// There are, of course, more Devanagari glyph variants than there are Latin characters. This means
 /// that Krutidev fonts need to be set up with an expanded range of glyphs. Judging by the sample font
-/// I found (Krutidev 010), the glpyh ranges required are:
-///   0x0020 -> 0x007E
-///   0x0090
-///   0x00A0 -> 0x00F9
-///   0x00B7
-///   0x0152
-///   0x0160
-///   0x0178
-///   0x0192
-///   0x02C6
-///   0x02DC
-///   0x2010
-///   0x2013 -> 0x2014
-///   0x2018 -> 0x201A
-///   0x201C -> 0x2021
-///   0x2026
-///   0x2030
-///   0x2039 -> 0x203A
-///   0x2122
+/// I found (Krutidev 010), the glyph ranges required are:
+///   32 ->  126        0x0020 -> 0x007E
+///  144                0x0090
+///  160 ->  249        0x00A0 -> 0x00F9
+///  338                0x0152
+///  352                0x0160
+///  376                0x0178
+///  402                0x0192
+///  710                0x02C6
+///  732                0x02DC
+/// 8208                0x2010
+/// 8211 -> 8212        0x2013 -> 0x2014
+/// 8216 -> 8218        0x2018 -> 0x201A
+/// 8220 -> 8225        0x201C -> 0x2021
+/// 8230                0x2026
+/// 8240                0x2030
+/// 8249 -> 8250        0x2039 -> 0x203A
+/// 8482                0x2122
 /// This list may not be exhaustive. I highly recommend grabbing FontForge to help determined what
 /// glyphs are available in your font of choice.
 /// 
