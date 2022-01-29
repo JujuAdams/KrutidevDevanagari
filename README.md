@@ -12,7 +12,6 @@ There are, of course, more Devanagari glyph variants than there are Latin charac
   32 ->  126        0x0020 -> 0x007E
  144                0x0090
  160 ->  249        0x00A0 -> 0x00F9
- 183                0x00B7
  338                0x0152
  352                0x0160
  376                0x0178
