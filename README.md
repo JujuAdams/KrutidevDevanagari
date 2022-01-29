@@ -28,7 +28,7 @@ There are, of course, more Devanagari glyph variants than there are Latin charac
 8482                0x2122
 ```
 
-This list may not be exhaustive. I highly recommend grabbing FontForge to help determined what glyphs are available in your font of choice.
+This list may not be exhaustive. I highly recommend grabbing [FontForge](https://fontforge.org/) to help determined what glyphs are available in your font of choice.
 
 Using Krutidev to render Devanagari has drawbacks:
 1) Only Krutidev fonts can be used with Krutidev-formatted text. There seem to be a *lot* of Krutidev fonts out there but that may dry up over time. I found a website that seems to host a bazillion Krutidev fonts: https://www.wfonts.com/search?kwd=Kruti+Dev
