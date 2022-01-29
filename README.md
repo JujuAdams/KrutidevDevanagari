@@ -2,7 +2,7 @@
 
 Krutidev is an old font format that allows for Devanagari ("Hindi") to be rendered without relying on GSUB and GPOS tables found in modern .ttf font files. GameMaker doesn't allow us to access GPOS and GSUB tables so this is the best we have until someone puts together a .ttf file reader.
 
-Krutidev works by inserting Devanagari glyphs into a font in Latin character slots. For example, "k" is replaced by "ा". Devanagari glyphs can get quite complicated, for example "ह्न" is made up of three Unicode characters but is represented in Krutidev using "à".
+Krutidev works by inserting Devanagari glyphs into a font by overwriting Latin character slots. For example, "k" is replaced by "ा". Devanagari glyphs can get quite complicated, for example "ह्न" is made up of three Unicode characters but is represented in Krutidev using "à".
 
 This function converts Unicode-formatted Devanagari into the necessary Latin characters so that when the outputted string is rendered using a Krutidev font the Devanagari glyphs are comfortably readable to the player.
 
