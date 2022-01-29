@@ -6,7 +6,7 @@ Krutidev works by inserting Devanagari glyphs into a font in Latin character slo
 
 This function converts Unicode-formatted Devanagari into the necessary Latin characters so that when the outputted string is rendered using a Krutidev font the Devanagari glyphs are comfortably readable to the player.
 
-There are, of course, more Devanagari glyph variants than there are Latin characters. This means that Krutidev fonts need to be set up with an expanded range of glyphs. Judging by the sample font I found ([Krutidev 010](https://github.com/JujuAdams/KrutidevDevanagari/tree/main/fonts/fntKrutidev010)), the glpyh ranges required are:
+There are, of course, more Devanagari glyph variants than there are Latin characters. This means that Krutidev fonts need to be set up with an expanded range of glyphs. Judging by the sample font I found ([Krutidev 010](https://github.com/JujuAdams/KrutidevDevanagari/tree/main/datafiles)), the glpyh ranges required are:
 
 ```
 0x0020 -> 0x007E
