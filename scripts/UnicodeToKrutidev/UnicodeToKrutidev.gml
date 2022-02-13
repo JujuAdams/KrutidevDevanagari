@@ -80,7 +80,7 @@ var _unicodeSourceArray = [
 	"श्", "श",  "ष्", "ष",  "स्",   "स",   "ह",     
 
 	"ऑ",   "ॉ",  "ो",   "ौ",   "ा",   "ी",   "ु",   "ू",   "ृ",   "े",   "ै",
-	"ं",   "ँ",   "ः",   "ॅ",    "ऽ",
+	"ं",   "ँ",   "ः",   "ॅ",    "ऽ", chr(0x94D), //virama
 ];
     
 var _krutidevSourceArray = [
@@ -108,7 +108,7 @@ var _krutidevSourceArray = [
 	"'", "'k",  "\"", "\"k", "L",   "l",   "g",      
 
 	"v‚",    "‚",    "ks",   "kS",   "k",     "h",    "q",   "w",   "`",    "s",    "S",
-	"a",    "¡",    "%",     "W",   "·",
+	"a",    "¡",    "%",     "W",   "·", "~",
 ];
 
 //Use a ds_map rather than a struct since our keys will be integers
@@ -145,11 +145,37 @@ repeat(array_length(_unicodeSourceArray))
 
 
 
+#region Build matra lookup table
+
+//Use a ds_map rather than a struct since our keys are integers
+global.__krutidevMatraLookupMap = ds_map_create();
+global.__krutidevMatraLookupMap[?   58] = true;
+global.__krutidevMatraLookupMap[? 2305] = true;
+global.__krutidevMatraLookupMap[? 2306] = true;
+global.__krutidevMatraLookupMap[? 2366] = true;
+global.__krutidevMatraLookupMap[? 2367] = true;
+global.__krutidevMatraLookupMap[? 2368] = true;
+global.__krutidevMatraLookupMap[? 2369] = true;
+global.__krutidevMatraLookupMap[? 2370] = true;
+global.__krutidevMatraLookupMap[? 2371] = true;
+global.__krutidevMatraLookupMap[? 2373] = true;
+global.__krutidevMatraLookupMap[? 2375] = true;
+global.__krutidevMatraLookupMap[? 2376] = true;
+global.__krutidevMatraLookupMap[? 2379] = true;
+global.__krutidevMatraLookupMap[? 2380] = true;
+    
+#endregion
+
+
+
 function UnicodeToKrutidev(_inString)
 {
     //Convert the string into an array
     var _stringLength = string_length(_inString);
-    var _charArray = array_create(_stringLength + 4, 0xFFFF); //Pad the end because we'll need to read beyond the end of the string during the final find-replace
+    //Pad the end because we'll need to read beyond the end of the string during the final find-replace
+    //We pad with 0xFFFF to avoid accidentally making incorrect substring matches later
+    var _charArray = array_create(_stringLength + 4, 0xFFFF);
+    
     var _i = 0;
     repeat(_stringLength)
     {
@@ -241,6 +267,7 @@ function UnicodeToKrutidev(_inString)
     
     #region Reposition ि  to the front of the word and replace it with an "f"
     
+    //TODO - Log where ि  is found during the nukta ligature sweep
     var _i = 1; //Start at the second char because we don't care if the string starts with 0x093F (Vowel Sign I)
     repeat(_stringLength-1)
     {
@@ -250,8 +277,9 @@ function UnicodeToKrutidev(_inString)
             var _fPosition = _i;
             
             //If we find a virama behind us keep tracking backwards
+            //We go two indexes backwards because virama (should) always follows another character
             var _j = _i - 1;
-            while((_j >= 0) && (_charArray[_i] == 0x094D)) _j -= 2;
+            while((_j >= 0) && (_charArray[_j] == 0x094D)) _j -= 2;
             
             array_delete(_charArray, _fPosition, 1);
             array_insert(_charArray, _j, ord("f"));
@@ -268,30 +296,18 @@ function UnicodeToKrutidev(_inString)
     
     #region Move र् (ra + virama) after matras
     
-    var _matraMap = ds_map_create();
-    _matraMap[?   58] = true;
-    _matraMap[? 2305] = true;
-    _matraMap[? 2306] = true;
-    _matraMap[? 2366] = true;
-    _matraMap[? 2367] = true;
-    _matraMap[? 2368] = true;
-    _matraMap[? 2369] = true;
-    _matraMap[? 2370] = true;
-    _matraMap[? 2371] = true;
-    _matraMap[? 2373] = true;
-    _matraMap[? 2375] = true;
-    _matraMap[? 2376] = true;
-    _matraMap[? 2379] = true;
-    _matraMap[? 2380] = true;
+    var _matraLookupMap = global.__krutidevMatraLookupMap;
     
+    //Using a for-loop here as _stringLength may change
     for(var _i = 0; _i < _stringLength; ++_i)
     {
+        //TODO - Log where ra-virama is found during the nukta ligature sweep
         if ((_charArray[_i] == ord("र")) && (_charArray[_i+1] == 0x094D)) //Ra followed by virama
         {
             var _probablePosition = _i + 3;
             
             var _charRight = _charArray[_probablePosition];
-            while(ds_map_exists(_matraMap, _charRight))
+            while(ds_map_exists(_matraLookupMap, _charRight))
             {
                 _probablePosition++;
                 _charRight = _charArray[_probablePosition];
@@ -304,22 +320,22 @@ function UnicodeToKrutidev(_inString)
         }
     }
     
-    ds_map_destroy(_matraMap);
-    
     #endregion
     
     
     
     #region Perform bulk find-replace
     
-    var _viramaPositionArray = [];
     var _lookupMap = global.__krutidevLookupMap;
     
+    //Create a 64-bit minibuffer
+    //Fortunately all the characters we're looking for fit into 16 bits and we only need to look for 4 at a time
     var _oneChar   =                                0x0000;
     var _twoChar   =              ((_charArray[0] & 0xFFFF) << 16);
     var _threeChar = _twoChar   | ((_charArray[1] & 0xFFFF) << 32);
     var _fourChar  = _threeChar | ((_charArray[2] & 0xFFFF) << 48);
     
+    //Using a for-loop here as _stringLength may change
     for(var _i = 0; _i < _stringLength; ++_i;)
     {
         _oneChar   = _twoChar   >> 16;
@@ -349,40 +365,63 @@ function UnicodeToKrutidev(_inString)
             }
         }
         
-        if (_replacementArray == undefined)
-        {
-            if (_oneChar == 0x94D) //Virama
-            {
-                array_push(_viramaPositionArray, _i);
-            }
-        }
-        else
+        //Perform a character replacement if we found any matching substring
+        if (_replacementArray != undefined)
         {
             var _replacementLength = array_length(_replacementArray);
             
             if ((_foundLength == 1) && (_replacementLength == 1))
             {
+                //Shortcut for the most common replacement operation
                 _charArray[@ _i] = _replacementArray[0];
             }
             else
             {
-                array_delete(_charArray, _i, _foundLength);
+                //Heavyweight general replacement code... we want to avoid as many delete/insert commands as
+                //possible as it causes lots of reallocation in the background
                 
-                var _j = 0;
-                repeat(_replacementLength)
+                //Copy over as much data as possible from one array
+                var _copyCount = min(_foundLength, _replacementLength);
+                array_copy(_charArray, _i, _replacementArray, 0, _copyCount);
+                
+                if (_foundLength > _replacementLength)
                 {
-                    array_insert(_charArray, _i + _j, _replacementArray[_j]);
-                    ++_j;
+                    //If we're replacing with fewer characters than we found then we need to delete some characters
+                    array_delete(_charArray, _i + _copyCount, _foundLength - _replacementLength);
                 }
+                else
+                {
+                    //Otherwise, we're adding characters to the array so we have to insert some characters
+                    switch(_replacementLength - _foundLength)
+                    {
+                        case 1:
+                            array_insert(_charArray, _i + _copyCount, _replacementArray[_copyCount]);
+                        break;
+                        
+                        //I'm not sure the 2 or 3 case ever happens but we should cover it just in case
+                        case 2:
+                            array_insert(_charArray, _i + _copyCount,
+                                         _replacementArray[_copyCount  ],
+                                         _replacementArray[_copyCount+1]);
+                        break;
+                        
+                        case 3:
+                            array_insert(_charArray, _i + _copyCount,
+                                         _replacementArray[_copyCount  ],
+                                         _replacementArray[_copyCount+1],
+                                         _replacementArray[_copyCount+2]);
+                        break;
+                    }
+                }
+                
+                _i            += _replacementLength - 1; //Off-by-one to account for ++_i in the for-loop
+                _stringLength += _replacementLength - _foundLength;
+                
+                //Recalculate our minibuffer since we've messed around with the array a lot
+                _twoChar   =              ((_charArray[_i+1] & 0xFFFF) << 16);
+                _threeChar = _twoChar   | ((_charArray[_i+2] & 0xFFFF) << 32);
+                _fourChar  = _threeChar | ((_charArray[_i+3] & 0xFFFF) << 48);
             }
-            
-            _i            += _replacementLength - 1;
-            _stringLength += _replacementLength - _foundLength;
-            
-            //Recalculate our minibuffer since we've messed around with the array a lot
-            _twoChar   =              ((_charArray[_i+1] & 0xFFFF) << 16);
-            _threeChar = _twoChar   | ((_charArray[_i+2] & 0xFFFF) << 32);
-            _fourChar  = _threeChar | ((_charArray[_i+3] & 0xFFFF) << 48);
         }
     }
     
@@ -390,19 +429,7 @@ function UnicodeToKrutidev(_inString)
     
     
     
-    #region Convert any lone viramas we found
-    
-    var _i = 0;
-    repeat(array_length(_viramaPositionArray))
-    {
-        _charArray[@ _viramaPositionArray[_i]] = ord("~");
-        ++_i;
-    }
-    
-    #endregion
-    
-    
-    
+    //Convert the array back into a string
     var _outString = "";
     var _i = 0;
     repeat(_stringLength)
