@@ -53,8 +53,8 @@
 
 function UnicodeToKrutidev(_inString)
 {
-    static _unicodeArray = [
-        "‘",   "’",   "“",   "”",   "(",    ")",   "{",    "}",   "=", "।",  "?",  "-",  "µ", "॰", ",", ".", "् ", 
+    static _unicodeSourceArray = [
+        "‘",   "’",   "“",   "”",   "(",    ")",   "{",    "}",   "=", "।",  "?",  "-",  "µ", "॰", ",", ".",
 		"०",  "१",  "२",  "३",     "४",   "५",  "६",   "७",   "८",   "९", "x", 
 
 		"फ़्",  "क़",  "ख़",  "ग़", "ज़्", "ज़",  "ड़",  "ढ़",   "फ़",  "य़",  "ऱ",  "ऩ",  
@@ -78,11 +78,11 @@ function UnicodeToKrutidev(_inString)
 		"श्", "श",  "ष्", "ष",  "स्",   "स",   "ह",     
 
 		"ऑ",   "ॉ",  "ो",   "ौ",   "ा",   "ी",   "ु",   "ू",   "ृ",   "े",   "ै",
-		"ं",   "ँ",   "ः",   "ॅ",    "ऽ",  "् ", "्",
+		"ं",   "ँ",   "ः",   "ॅ",    "ऽ",
     ];
     
-    static _krutidevArray = [
-        "^", "*",  "Þ", "ß", "¼", "½", "¿", "À", "¾", "A", "\\", "&", "&", "Œ", "]","-","~ ", 
+    static _krutidevSourceArray = [
+        "^", "*",  "Þ", "ß", "¼", "½", "¿", "À", "¾", "A", "\\", "&", "&", "Œ", "]","-", 
 		"å",  "ƒ",  "„",   "…",   "†",   "‡",   "ˆ",   "‰",   "Š",   "‹","Û",
 
 		"¶",   "d",    "[k",  "x",  "T",  "t",   "M+", "<+", "Q",  ";",    "j",   "u",
@@ -106,87 +106,313 @@ function UnicodeToKrutidev(_inString)
 		"'", "'k",  "\"", "\"k", "L",   "l",   "g",      
 
 		"v‚",    "‚",    "ks",   "kS",   "k",     "h",    "q",   "w",   "`",    "s",    "S",
-		"a",    "¡",    "%",     "W",   "·",   "~ ", "~",
+		"a",    "¡",    "%",     "W",   "·",
     ];
     
-    var _outString = _inString;
     
-    var _pos = string_pos("'", _outString);
-    while(_pos >= 1)
+    
+    //Convert the string into an array
+    var _stringLength = string_length(_inString);
+    var _charArray = array_create(_stringLength + 4, 0xFFFF); //Pad the end because we'll need to read beyond the end of the string during the final find-replace
+    var _i = 0;
+    repeat(_stringLength)
     {
-        _outString = string_replace(_outString, "'", "^");
-        _outString = string_replace(_outString, "'", "*");
-        _pos = string_pos("'", _outString);
+        _charArray[@ _i] = ord(string_char_at(_inString, _i+1));
+        ++_i;
     }
     
-    var _pos = string_pos("\"", _outString);
-    while(_pos >= 1)
-    {
-        _outString = string_replace(_outString, "'", "ß");
-        _outString = string_replace(_outString, "'", "Þ");
-        _pos = string_pos("\"", _outString);
-    }
     
-    _outString = string_replace_all(_outString, "क़", "क़"); 
-    _outString = string_replace_all(_outString, "ख़", "ख़");
-    _outString = string_replace_all(_outString, "ग़", "ग़");
-    _outString = string_replace_all(_outString, "ज़", "ज़");
-    _outString = string_replace_all(_outString, "ड़", "ड़");
-    _outString = string_replace_all(_outString, "ढ़", "ढ़");
-    _outString = string_replace_all(_outString, "ऩ", "ऩ");
-    _outString = string_replace_all(_outString, "फ़", "फ़");
-    _outString = string_replace_all(_outString, "य़", "य़");
-    _outString = string_replace_all(_outString, "ऱ", "ऱ");   
     
-    var _position_f = string_pos("ि", _outString);
-    while(_position_f >= 1)
+    #region Transform quotes and split up nukta ligatures
+    
+    var _inSingleQuote = false;
+    var _inDoubleQuote = false;
+    var _i = 0;
+    repeat(_stringLength)
     {
-        var _stringReplace = string_char_at(_outString, _position_f - 1);
-        _outString = string_replace(_outString, _stringReplace + "ि", "f" + _stringReplace);
-        
-        _position_f--;
-        while((_position_f > 0) && (string_char_at(_outString, _position_f - 1) == chr(0x094D))) //DEVANAGARI SIGN VIRAMA
+        switch(_charArray[_i])
         {
-            var _stringReplace = string_char_at(_outString, _position_f - 2) + chr(0x094D);
-            _outString = string_replace(_outString, _stringReplace + "ि", "f" + _stringReplace);
+            //Set up alternating single quote marks
+            case ord("'"):
+                _inSingleQuote = !_inSingleQuote;
+                _charArray[@ _i] = _inSingleQuote? ord("^") : ord("*");
+            break;
             
-            _position_f -= 2;
+            //Set up alternating double quote marks
+            case ord("\""):
+                _inDoubleQuote = !_inDoubleQuote;
+                _charArray[@ _i] = _inDoubleQuote? ord("ß") : ord("Þ");
+            break;
+            
+            //Split up nukta ligatures into their componant parts
+            case ord("ऩ"):
+                _charArray[@ _i] = ord("न");
+                array_insert(_charArray, _i+1, 0x093C); ++_i; ++_stringLength; //Nukta
+            break;
+            
+            case ord("ऱ"):
+                _charArray[@ _i] = ord("र");
+                array_insert(_charArray, _i+1, 0x093C); ++_i; ++_stringLength; //Nukta
+            break;
+            
+            case ord("क़"):
+                _charArray[@ _i] = ord("क");
+                array_insert(_charArray, _i+1, 0x093C); ++_i; ++_stringLength; //Nukta
+            break;
+            
+            case ord("ख़"):
+                _charArray[@ _i] = ord("ख");
+                array_insert(_charArray, _i+1, 0x093C); ++_i; ++_stringLength; //Nukta
+            break;
+            
+            case ord("ग़"):
+                _charArray[@ _i] = ord("ग");
+                array_insert(_charArray, _i+1, 0x093C); ++_i; ++_stringLength; //Nukta
+            break;
+            
+            case ord("ज़"):
+                _charArray[@ _i] = ord("ज");
+                array_insert(_charArray, _i+1, 0x093C); ++_i; ++_stringLength; //Nukta
+            break;
+            
+            case ord("ड़"):
+                _charArray[@ _i] = ord("ड");
+                array_insert(_charArray, _i+1, 0x093C); ++_i; ++_stringLength; //Nukta
+            break;
+            
+            case ord("ढ़"):
+                _charArray[@ _i] = ord("ढ");
+                array_insert(_charArray, _i+1, 0x093C); ++_i; ++_stringLength; //Nukta
+            break;
+            
+            case ord("फ़"):
+                _charArray[@ _i] = ord("फ");
+                array_insert(_charArray, _i+1, 0x093C); ++_i; ++_stringLength; //Nukta
+            break;
+            
+            case ord("य़"):
+                _charArray[@ _i] = ord("य");
+                array_insert(_charArray, _i+1, 0x093C); ++_i; ++_stringLength; //Nukta
+            break;
         }
         
-        _position_f = string_pos_ext("ि", _outString, _position_f + 1);
+        ++_i;
     }
     
-    static _matraString = "ािीुूृेैोौं:ँॅ";
-    _outString += "  ";
+    #endregion
     
-    var _positionHalfR = string_pos("र्", _outString);
-    while(_positionHalfR >= 1)
+    
+    
+    #region Reposition ि  to the front of the word and replace it with an "f"
+    
+    var _i = 1; //Start at the second char because we don't care if the string starts with 0x093F (Vowel Sign I)
+    repeat(_stringLength-1)
     {
-        var _probablePosition = _positionHalfR + 2;
-        var _charRight = string_char_at(_outString, _probablePosition + 1);
-        
-        while(string_pos(_charRight, _matraString) >= 1)
+        var _char = _charArray[_i];
+        if (_char == ord("ि"))
         {
-            _probablePosition++;
-            _charRight = string_char_at(_outString, _probablePosition + 1);
+            var _fPosition = _i;
+            
+            //If we find a virama behind us keep tracking backwards
+            var _j = _i - 1;
+            while((_j >= 0) && (_charArray[_i] == 0x094D)) _j -= 2;
+            
+            array_delete(_charArray, _fPosition, 1);
+            array_insert(_charArray, _j, ord("f"));
+            
+            _i = _fPosition;
         }
         
-        var _targetString = string_copy(_outString, _positionHalfR + 2, _probablePosition - _positionHalfR - 1);
-        _outString = string_replace(_outString, "र्" + _targetString, _targetString + "Z");
-        _positionHalfR = string_pos_ext("र्", _outString, _probablePosition);
+        ++_i;
     }
     
-    _outString = string_copy(_outString, 1, string_length(_outString) - 2);
+    #endregion
+    
+    
+    
+    #region Move र्
+    
+    var _matraMap = ds_map_create();
+    _matraMap[?   58] = true;
+    _matraMap[? 2305] = true;
+    _matraMap[? 2306] = true;
+    _matraMap[? 2366] = true;
+    _matraMap[? 2367] = true;
+    _matraMap[? 2368] = true;
+    _matraMap[? 2369] = true;
+    _matraMap[? 2370] = true;
+    _matraMap[? 2371] = true;
+    _matraMap[? 2373] = true;
+    _matraMap[? 2375] = true;
+    _matraMap[? 2376] = true;
+    _matraMap[? 2379] = true;
+    _matraMap[? 2380] = true;
+    
+    for(var _i = 0; _i < _stringLength; ++_i)
+    {
+        if ((_charArray[_i] == ord("र")) && (_charArray[_i+1] == 0x094D)) //Ra followed by virama
+        {
+            var _probablePosition = _i + 3;
+            
+            var _charRight = _charArray[_probablePosition];
+            while(ds_map_exists(_matraMap, _charRight))
+            {
+                _probablePosition++;
+                _charRight = _charArray[_probablePosition];
+            }
+            
+            array_insert(_charArray, _probablePosition, ord("Z"));
+            array_delete(_charArray, _i, 2);
+            
+            --_stringLength;
+        }
+    }
+    
+    ds_map_destroy(_matraMap);
+    
+    #endregion
+    
+    
+    
+    #region Build find-replace lookup table
+    
+    var _lookupMap = ds_map_create();
+    var _lookupMapReadable = ds_map_create();
     
     var _i = 0;
-    repeat(array_length(_unicodeArray))
+    repeat(array_length(_unicodeSourceArray))
     {
-        if (string_pos(_unicodeArray[_i], _outString) > 0) && keyboard_check_pressed(ord("J"))
+        var _string = _unicodeSourceArray[_i];
+        
+        var _searchInteger = 0;
+        var _j = string_length(_string);
+        repeat(_j)
         {
-            show_debug_message("\"" + _unicodeArray[_i] + "\"    ->    \"" + _krutidevArray[_i] + "\"");
+            _searchInteger = (_searchInteger << 16) | ord(string_char_at(_string, _j));
+            --_j;
         }
         
-        _outString = string_replace_all(_outString, _unicodeArray[_i], _krutidevArray[_i]);
+        _lookupMapReadable[? _searchInteger] = _string;
+        
+        var _string = _krutidevSourceArray[_i];
+        var _writeArray = [];
+        var _j = 1;
+        repeat(string_length(_string))
+        {
+            array_push(_writeArray, ord(string_char_at(_string, _j)));
+            ++_j;
+        }
+        
+        _lookupMap[? _searchInteger] = _writeArray;
+        
+        ++_i;
+    }
+    
+    #endregion
+    
+    
+    
+    #region Perform bulk find-replace
+    
+    var _viramaPositionArray = [];
+    
+    var _oneChar   =                                0x0000;
+    var _twoChar   =              ((_charArray[0] & 0xFFFF) << 16);
+    var _threeChar = _twoChar   | ((_charArray[1] & 0xFFFF) << 32);
+    var _fourChar  = _threeChar | ((_charArray[2] & 0xFFFF) << 48);
+    
+    for(var _i = 0; _i < _stringLength; ++_i;)
+    {
+        _oneChar   = _twoChar   >> 16;
+        _twoChar   = _threeChar >> 16;
+        _threeChar = _fourChar  >> 16;
+        _fourChar  = _threeChar | ((_charArray[_i + 3] & 0xFFFF) << 48);
+        
+        //Try to find a matching substring
+        var _foundLength = 4;
+        var _replacement = _lookupMap[? _fourChar];
+        var _substring   = _lookupMapReadable[? _fourChar];
+        
+        if (_replacement == undefined)
+        {
+            _foundLength = 3;
+            _replacement = _lookupMap[? _threeChar];
+            _substring   = _lookupMapReadable[? _threeChar];
+            
+            if (_replacement == undefined)
+            {
+                _foundLength = 2;
+                _replacement = _lookupMap[? _twoChar];
+                _substring   = _lookupMapReadable[? _twoChar];
+                
+                if (_replacement == undefined)
+                {
+                    _foundLength = 1;
+                    _replacement = _lookupMap[? _oneChar];
+                    _substring   = _lookupMapReadable[? _oneChar];
+                }
+            }
+        }
+        
+        if (_replacement == undefined)
+        {
+            if (_oneChar == 0x94D) //Virama
+            {
+                array_push(_viramaPositionArray, _i);
+            }
+        }
+        else
+        {
+            var _replacementLength = array_length(_replacement);
+            
+            if ((_foundLength == 1) && (_replacementLength == 1))
+            {
+                _charArray[@ _i] = _replacement[0];
+            }
+            else
+            {
+                array_delete(_charArray, _i, _foundLength);
+                
+                var _j = 0;
+                repeat(_replacementLength)
+                {
+                    array_insert(_charArray, _i + _j, _replacement[_j]);
+                    ++_j;
+                }
+            }
+            
+            _i            += _replacementLength - 1;
+            _stringLength += _replacementLength - _foundLength;
+            
+            //Recalculate our minibuffer since we've messed around with the array a lot
+            _twoChar   =              ((_charArray[_i+1] & 0xFFFF) << 16);
+            _threeChar = _twoChar   | ((_charArray[_i+2] & 0xFFFF) << 32);
+            _fourChar  = _threeChar | ((_charArray[_i+3] & 0xFFFF) << 48);
+        }
+    }
+    
+    #endregion
+    
+    
+    
+    #region Convert any lone viramas we found
+    
+    var _i = 0;
+    repeat(array_length(_viramaPositionArray))
+    {
+        _charArray[@ _viramaPositionArray[_i]] = ord("~");
+        ++_i;
+    }
+    
+    #endregion
+    
+    
+    
+    var _outString = "";
+    var _i = 0;
+    repeat(_stringLength)
+    {
+        _outString += chr(_charArray[_i]);
         ++_i;
     }
     

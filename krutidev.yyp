@@ -1,7 +1,9 @@
 {
   "resources": [
     {"id":{"name":"UnicodeToKrutidev","path":"scripts/UnicodeToKrutidev/UnicodeToKrutidev.yy",},"order":2,},
-    {"id":{"name":"fntKrutidev010","path":"fonts/fntKrutidev010/fntKrutidev010.yy",},"order":3,},
+    {"id":{"name":"dec_to_hex","path":"scripts/dec_to_hex/dec_to_hex.yy",},"order":6,},
+    {"id":{"name":"UnicodeToKrutidev_old","path":"scripts/UnicodeToKrutidev_old/UnicodeToKrutidev_old.yy",},"order":3,},
+    {"id":{"name":"fntKrutidev010","path":"fonts/fntKrutidev010/fntKrutidev010.yy",},"order":4,},
     {"id":{"name":"oTest","path":"objects/oTest/oTest.yy",},"order":1,},
     {"id":{"name":"rMain","path":"rooms/rMain/rMain.yy",},"order":0,},
   ],
